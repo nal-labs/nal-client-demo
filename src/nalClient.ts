@@ -1,9 +1,9 @@
 // import { publicClientL1, publicClientL2, walletClientL1, walletClientL2, account, usdtInfo } from './config/configNalMainnet'
-import { publicClientL1, publicClientL2, walletClientL1, walletClientL2, account, usdtInfo } from './config/configNalSepolia'
-import { tokenType, chainType } from "./config/define"
-import { parseEther, formatEther, GetTransactionReceiptReturnType, Hash, Withdrawal } from 'viem'
+import { publicClientL1, publicClientL2, walletClientL1, walletClientL2, account, usdtInfo, usdcInfo } from './config/configNalSepolia'
+import { tokenType, chainType, ERC20Token } from "./config/define"
+import { parseEther, formatEther, GetTransactionReceiptReturnType, Hash } from 'viem'
 import { getL2TransactionHashes, GetWithdrawalsReturnType } from 'viem/op-stack'
-import { erc20Abi, getAddress } from 'viem'
+import { erc20Abi, getAddress, Address } from 'viem'
 import { l1StandardBridgeABI, l2StandardBridgeABI } from '@eth-optimism/contracts-ts'
 import { digiAbi } from './abibin/digiAbi'
 
@@ -72,24 +72,46 @@ async function withdrawETH() {
     await getL1L2Balance();
 }
 
-async function depositERC20(){
+async function depositERC20(erc20Token : ERC20Token){
+    let tokenAddr = {
+        l1: usdtInfo.addrL1,
+        l2: usdtInfo.addrL2
+    };
+    switch (erc20Token) {
+        case ERC20Token.USDT: {
+            console.log("deposit USDT")
+            // tokenAddr.l1 = usdtInfo.addrL1;
+            // tokenAddr.l2 = usdtInfo.addrL2;
+            break;
+        }
+        case ERC20Token.USDC: {
+            console.log("deposit USDC")
+            tokenAddr.l1 = usdcInfo.addrL1;
+            tokenAddr.l2 = usdcInfo.addrL2;
+            break;
+        }
+        default: {
+            console.log("Unknown ERC20 token type");
+            return;
+        }
+    }
     console.log("Before deposit:")
     console.log("L1Wallet: " + (await publicClientL1.readContract({
-        abi: erc20Abi, address: usdtInfo.addrL1, functionName: "balanceOf", args: [account.address]})))
+        abi: erc20Abi, address: tokenAddr.l1, functionName: "balanceOf", args: [account.address]})))
     console.log("L2Wallet: " + (await publicClientL2.readContract({
-        abi: erc20Abi, address: usdtInfo.addrL2, functionName: "balanceOf", args: [account.address]})))
+        abi: erc20Abi, address: tokenAddr.l2, functionName: "balanceOf", args: [account.address]})))
 
     // decimal is 6, It is one usdt below;
-    const usdtTransfer = 100000000n;
+    const transferAmount = 90000000000000000n;
 
     //1. approve
     const hash = await walletClientL1.writeContract({
         abi: erc20Abi,
-        address: usdtInfo.addrL1,
+        address: tokenAddr.l1,
         functionName: 'approve',
         args: [
             getAddress(publicClientL2.chain.contracts.l1StandardBridge[publicClientL2.chain.sourceId].address), 
-            usdtTransfer],
+            transferAmount],
     });
     
     // const hash = "0x8165b36712cc270e5bae...de344b561213d01b1";
@@ -103,7 +125,7 @@ async function depositERC20(){
         abi: l1StandardBridgeABI,
         address: getAddress(publicClientL2.chain.contracts.l1StandardBridge[publicClientL2.chain.sourceId].address),
         functionName: "depositERC20To",
-        args: [usdtInfo.addrL1, usdtInfo.addrL2, account.address, usdtTransfer, 0, "0x"]
+        args: [tokenAddr.l1, tokenAddr.l2, account.address, transferAmount, 0, "0x"]
     });
     console.log("L1 ERC20 deposit tx hash: " + depositHash);
     // Wait for the L1 transaction to be processed.
@@ -120,9 +142,9 @@ async function depositERC20(){
 
     console.log("after deposit:")
     console.log("l1Wallet: " + (await publicClientL1.readContract({
-        abi: erc20Abi, address: usdtInfo.addrL1, functionName: "balanceOf", args: [account.address]})))
+        abi: erc20Abi, address: tokenAddr.l1, functionName: "balanceOf", args: [account.address]})))
     console.log("l2Wallet: " + (await publicClientL2.readContract({
-        abi: erc20Abi, address: usdtInfo.addrL2, functionName: "balanceOf", args: [account.address]})))
+        abi: erc20Abi, address: tokenAddr.l2, functionName: "balanceOf", args: [account.address]})))
 }
 
 async function withdrawERC20(){
@@ -318,18 +340,18 @@ async function transferERC20() {
         abi: erc20Abi, address: usdtInfo.addrL2, functionName: "balanceOf", args: [reciever]})))
 }
 
-async function faucetUSDT(){
+async function faucet(erc20Token :ERC20Token){
     const sepUSDTAbi = [{ constant: true, inputs: [{ name: "_owner", type: "address" }], name: "balanceOf", outputs: [{ name: "balance", type: "uint256" }], type: "function" }, { inputs: [], name: "faucet", outputs: [], stateMutability: "nonpayable", type: "function" }];
 
     const hash = await walletClientL1.writeContract({
         abi: sepUSDTAbi,
-        address: usdtInfo.addrL1,
+        address: erc20Token == ERC20Token.USDT? usdtInfo.addrL1 : usdcInfo.addrL1,
         functionName: 'faucet'
     });
-    console.log("L1 USDT faucet tx hash: " + hash);
+    console.log("L1 faucet tx hash: " + hash);
     // Wait for the L1 transaction to be processed.
     const receipt = await publicClientL1.waitForTransactionReceipt({ hash });
-    console.log("Finish L1 USDT faucet TX:" + JSON.stringify(receipt));
+    console.log("Finish L1 faucet TX:" + JSON.stringify(receipt));
 }
 
 async function digiCoin() {
@@ -363,20 +385,24 @@ function delay(ms: number){
 }
 
 async function main() {
-    console.log("L1 blockNumber:"+ await publicClientL1.getBlockNumber());
-    console.log("L2 blockNumber:"+ await publicClientL2.getBlockNumber());
+    try {
+        console.log("L1 blockNumber:"+ await publicClientL1.getBlockNumber());
+        console.log("L2 blockNumber:"+ await publicClientL2.getBlockNumber());
     
-    // await depositETH();
-    // await withdrawETH();
+        // await depositETH();
+        // await withdrawETH();
 
-    // faucetUSDT();
-    // await depositERC20();
-    // await withdrawERC20();
+        // faucet(ERC20Token.USDC);
+        await depositERC20(ERC20Token.USDC);
+        // await withdrawERC20();
 
-    // await transferETH(chainType.l2);
-    await transferERC20();
+        // await transferETH(chainType.l2);
+        // await transferERC20();
 
-    // await digiCoin();
+        // await digiCoin();
+    } catch (error) {
+        console.log(error);   
+    }
 }
 
 main();

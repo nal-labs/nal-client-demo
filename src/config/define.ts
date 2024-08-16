@@ -7,3 +7,9 @@ export const enum tokenType {
     ETH,
     ERC20
 }
+
+export const enum ERC20Token {
+    Unknown,
+    USDT,
+    USDC
+}

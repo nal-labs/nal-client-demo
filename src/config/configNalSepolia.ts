@@ -11,6 +11,10 @@ export const usdtInfo = {
   addrL1 : getAddress("0x84E7a252AD39Cc9BFcDcB16208c3e912a313be97"),
   addrL2 : getAddress("0xe4f926348d533d2b20857bd4d96ba92a4ceb9c15")
 }
+export const usdcInfo = {
+  addrL1 : getAddress("0x3b423b8f6d28601bef9352f4c1cc9c1fa72e6450"),
+  addrL2 : getAddress("0xe3b1a545130163ff977e06bcbae9bc55ec7ddaf6")
+}
 
 const opRpcUrl = "https://optimism-sepolia.drpc.org";
 const nalRpcUrl = "https://testnet-rpc.nal.network";
