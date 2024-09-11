@@ -354,6 +354,19 @@ async function faucet(erc20Token :ERC20Token){
     console.log("Finish L1 faucet TX:" + JSON.stringify(receipt));
 }
 
+async function getBalance() {
+    // const addr = account.address;
+    const addr = "0xBDA54E9DFcD503aAC703e32A99E3c37938f291E5";
+    /******************** get ERC20 balance ********************/
+    console.log("L1 ERC20 balance: " + (await publicClientL1.readContract({
+        abi: erc20Abi, address: usdtInfo.addrL1, functionName: "balanceOf", args: [addr]})))
+    console.log("L2 ERC20 balance: " + (await publicClientL2.readContract({
+        abi: erc20Abi, address: usdtInfo.addrL2, functionName: "balanceOf", args: [addr]})))
+    /******************** get ETH balance ********************/
+    console.log("L1 ETH balance:" + formatEther(await publicClientL1.getBalance({address : addr})));
+    console.log("L2 ETH balance:" + formatEther(await publicClientL2.getBalance({address : addr})));
+}
+
 async function digiCoin() {
     const transferAmount = 5000000n;
     const digiProxy = "0x3201...a95c4bD";
@@ -388,12 +401,14 @@ async function main() {
     try {
         console.log("L1 blockNumber:"+ await publicClientL1.getBlockNumber());
         console.log("L2 blockNumber:"+ await publicClientL2.getBlockNumber());
-    
+
+        await getBalance();
+        
         // await depositETH();
         // await withdrawETH();
 
         // faucet(ERC20Token.USDC);
-        await depositERC20(ERC20Token.USDC);
+        // await depositERC20(ERC20Token.USDC);
         // await withdrawERC20();
 
         // await transferETH(chainType.l2);

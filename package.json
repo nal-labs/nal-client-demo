@@ -14,5 +14,8 @@
     "dotenv": "^16.4.5",
     "tslib": "^2.6.3",
     "viem": "^2.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4"
   }
 }
